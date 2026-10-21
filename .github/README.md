@@ -1,3 +1,10 @@
+> **Windows fork: Deskflow + Viola Clipboard**
+>
+> This fork adds verified file/folder copy-paste, encrypted clipboard history for text and screenshots,
+> and private setup bundles for pairing another PC. Deskflow keeps its native text/HTML/bitmap sharing.
+> Read [the Windows setup and feature guide](../src/apps/viola-bridge/README.md).
+> Builds are produced by the **Deskflow + Viola Windows** Actions workflow. This is an independent fork.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/deskflow/deskflow-artwork/blob/main/logo/deskflow-logo-dark-200px.png?raw=true">
   <source media="(prefers-color-scheme: light)" srcset="https://github.com/deskflow/deskflow-artwork/blob/main/logo/deskflow-logo-light-200px.png?raw=true">

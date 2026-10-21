@@ -75,7 +75,8 @@ jobs:
         run: |
           $payload = (Get-ChildItem dist -Filter '*.zip' | Select-Object -First 1).FullName
           if (-not $payload) { throw 'Deskflow ZIP missing' }
-          ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/deskflow-viola" -DeskflowPayload $payload
+          Invoke-WebRequest https://aka.ms/vs/17/release/vc_redist.x64.exe -OutFile "$env:RUNNER_TEMP/vc_redist.x64.exe"
+          ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/deskflow-viola" -DeskflowPayload $payload -VCRedist "$env:RUNNER_TEMP/vc_redist.x64.exe"
           Copy-Item "$env:RUNNER_TEMP/deskflow-viola/ViolaFileBridge-Setup.exe" dist/Deskflow-Viola-0.3.0-Setup.exe
           Get-FileHash dist/*.exe,dist/*.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
       - name: Upload complete setup and portable fork

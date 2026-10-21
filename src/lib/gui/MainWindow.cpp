@@ -34,6 +34,7 @@
 
 #include <QCheckBox>
 #include <QCloseEvent>
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
@@ -720,7 +721,16 @@ void MainWindow::setupTrayIcon()
 #ifdef Q_OS_WIN
 void MainWindow::openClipboardTools(const QString &command, bool reportMissing)
 {
-  const auto executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("ViolaFileBridge.exe"));
+  auto executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("ViolaFileBridge.exe"));
+  const auto installedDirectory =
+      QDir(qEnvironmentVariable("LOCALAPPDATA")).filePath(QStringLiteral("ViolaFileBridge/App"));
+  const auto installedExecutable = QDir(installedDirectory).filePath(QStringLiteral("ViolaFileBridge.exe"));
+  // The full per-user installer keeps its invitation-capable setup beside this copy.
+  // Prefer it over the portable copy inside the nested Deskflow payload.
+  if (QFileInfo::exists(installedExecutable) &&
+      QFileInfo::exists(QDir(installedDirectory).filePath(QStringLiteral("NetworkSetup.ps1")))) {
+    executable = installedExecutable;
+  }
   if (!QFileInfo::exists(executable)) {
     if (reportMissing) {
       QMessageBox::information(

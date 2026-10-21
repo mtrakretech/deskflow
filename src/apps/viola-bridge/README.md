@@ -28,6 +28,8 @@ History is local to each PC. Each PC can save synchronized content when it reach
 
 Copy files/folders in Explorer, wait for **Ready to paste** on the receiving PC, then paste in Explorer normally. Both directions use the same path. CUT is copied and originals remain safe. Large files stage to `%LOCALAPPDATA%\ViolaFileBridge\Cache` before paste; early Ctrl+V during transfer is not implemented. Transfer uses fixed 256 KiB buffers and Int64 sizes, SHA-256 verification, three full-transfer attempts, per-transfer GUID directories, safe path validation and cleanup. Byte-offset resume is not implemented. Local reparse points, UNC selections and Viola's own data files are excluded. Explorer decides final destination collisions.
 
+If you copy newer text, an image, or other files while files are arriving, the receiver keeps that newer clipboard selection. The verified transfer still completes into its cache/history. Use **Copy latest received files** in the receiving tray when you want to paste those files. Selecting something else while the sender is still enumerating a large folder supersedes that unsent selection. The receiver rechecks clipboard changes on each clipboard-lock retry rather than replacing newer content after a long busy period.
+
 TCP 48751 and UDP 48752 are separate from Deskflow's default TCP 24800. Only physical Private Ethernet/Wi-Fi IPv4 adapters and same-subnet peers are eligible. VPN/virtual adapters are excluded. UDP wildcard reception validates the actual ingress interface; TCP binds eligible addresses only. Manual IP fallback still requires mutual TLS. File cache expires after 72 hours (partial: 24 hours), protecting current/latest clipboard references and active transfers.
 
 ## Build, test and package

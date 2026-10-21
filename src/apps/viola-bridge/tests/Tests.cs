@@ -16,7 +16,7 @@ namespace Viola
     {
         static int passed, failed;
         static string root;
-        static bool liveOnly, noClipboard, liveHistoryOnly;
+        static bool liveOnly, noClipboard, liveHistoryOnly, liveClipboardOnly;
         static void Check(bool ok, string why)
         {
             if (!ok)
@@ -36,6 +36,8 @@ namespace Viola
         }
         static void Test(string name, Action action)
         {
+            if (liveClipboardOnly && !name.StartsWith("Live clipboard"))
+                return;
             if (liveHistoryOnly && !name.StartsWith("Live history"))
                 return;
             if (liveOnly && !name.StartsWith("Installed tray"))
@@ -180,6 +182,7 @@ namespace Viola
         {
             liveOnly = args.Contains("--live-only");
             liveHistoryOnly = args.Contains("--live-history-only");
+            liveClipboardOnly = args.Contains("--live-clipboard-only");
             noClipboard = args.Contains("--no-clipboard");
             root = Path.Combine(Path.GetTempPath(), "Viola-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
@@ -433,6 +436,9 @@ namespace Viola
                          }
                      });
             HistoryTests.Run(Test, root);
+            if (liveClipboardOnly)
+                Test("Live clipboard keeps newer text and explicitly restores received files",
+                     () => HistoryTests.LiveClipboardPolicy(root));
             if (liveHistoryOnly)
                 Test("Live history records real text and bitmap clipboard events", () => HistoryTests.Live(root));
             if (identity != null)

@@ -17,6 +17,22 @@ using System.Reflection;
 [assembly:AssemblyCopyright("Copyright 2026 Viola File Bridge contributors")]
 namespace Viola
 {
+    public static class ClipboardPolicy
+    {
+        public static bool ShouldPublish(uint atStart, uint current, IDataObject data)
+        {
+            if (atStart == current || data == null)
+                return true;
+            string[] meaningful = { DataFormats.FileDrop,
+                                    DataFormats.UnicodeText,
+                                    DataFormats.Text,
+                                    DataFormats.Html,
+                                    DataFormats.Rtf,
+                                    DataFormats.Bitmap,
+                                    "PNG" };
+            return !meaningful.Any(format => data.GetDataPresent(format));
+        }
+    }
     public sealed class ClipboardWindow : Form
     {
         [DllImport("user32.dll", SetLastError = true)]
@@ -116,6 +132,7 @@ namespace Viola
             menu.Items.Add(pause);
             menu.Items.Add("Add another PC…", null, (s, e) => AddComputer());
             menu.Items.Add("Open received cache", null, (s, e) => Open(Path.Combine(root, "Cache")));
+            menu.Items.Add("Copy latest received files", null, (s, e) => CopyLatestReceived());
             menu.Items.Add("Open Logs", null, (s, e) => Open(Path.Combine(root, "Logs")));
             menu.Items.Add("Settings and pairing", null, (s, e) => Settings());
             menu.Items.Add("Network settings", null, (s, e) => Process.Start("ms-settings:network-status"));
@@ -210,15 +227,14 @@ namespace Viola
                         using (var writer = new StreamWriter(note.Open()))
                             writer.Write("PRIVATE PAIRING BUNDLE — do not publish.\r\nExtract this ZIP on the other " +
                                          "PC and run ViolaFileBridge-Setup.exe.\r\nEnter the password you chose on " +
-                                         "the first PC. Compare fingerprint:\r\n" +
-                                         identity.Pin +
+                                         "the first PC. Compare fingerprint:\r\n" + identity.Pin +
                                          ("\r\nDelete this bundle after installation. Existing pairing must be " +
                                           "replaced explicitly.\r\nFor mouse/keyboard configure the normal Deskflow " +
                                           "host and screen layout once.\r\n"));
                     }
                     MessageBox.Show(
                         "Private setup bundle created. Extract it on the other PC and run its installer. Enter your " +
-                        "password there once. Share the password separately and delete the bundle afterward.",
+                            "password there once. Share the password separately and delete the bundle afterward.",
                         "Add another PC");
                 }
             }
@@ -281,7 +297,14 @@ namespace Viola
                    else if (text.Contains("delivered"))
                    {
                        HideProgress();
-                       Notify("Transfer delivered", "The other PC has verified the files and made them ready to paste.",
+                       Notify("Transfer delivered",
+                              "The other PC verified the files. Check its notification before pasting.", false);
+                   }
+                   else if (text.StartsWith("Files received"))
+                   {
+                       HideProgress();
+                       Notify("Files received",
+                              "Your newer clipboard was kept. Use Copy latest received files in the tray when ready.",
                               false);
                    }
                });
@@ -295,7 +318,8 @@ namespace Viola
         void ReadClipboard()
         {
             debounce.Stop();
-            if (ClipboardWindow.GetClipboardSequenceNumber() == ownSequence)
+            uint observedSequence = ClipboardWindow.GetClipboardSequenceNumber();
+            if (observedSequence == ownSequence)
                 return;
             try
             {
@@ -314,7 +338,12 @@ namespace Viola
                 if (paths.Any(p => p.StartsWith("\\\\", StringComparison.Ordinal) || SafePath.IsInside(root, p)))
                     throw new IOException("Select local user files outside Viola's own data directory.");
                 // Never write the source clipboard, delete originals, or report a performed move.
-                bridge.Queue(paths);
+                if (ClipboardWindow.GetClipboardSequenceNumber() != observedSequence)
+                {
+                    ClipboardChanged();
+                    return;
+                }
+                bridge.Queue(paths, observedSequence);
                 Log.Write("Clipboard file selection queued (" + paths.Length + " roots)");
             }
             catch (ExternalException ex)
@@ -336,9 +365,33 @@ namespace Viola
                 SetState("Error: clipboard selection; see logs");
             }
         }
-        void Publish(string[] paths)
+        void CopyLatestReceived()
+        {
+            if (received.Length == 0)
+            {
+                Notify("Received files", "No files have been received in this session.", false);
+                return;
+            }
+            string[] paths = received.ToArray();
+            uint sequence = ClipboardWindow.GetClipboardSequenceNumber();
+            System.Threading.Tasks.Task.Run(
+                () =>
+                {
+                    try
+                    {
+                        SetState(Publish(paths, sequence) ? "Ready to paste" : "Files received: newer clipboard kept");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Write("Restore received files: " + ex);
+                        SetState("Error: clipboard busy; try again");
+                    }
+                });
+        }
+        bool Publish(string[] paths, uint sequenceAtStart)
         {
             Exception error = null;
+            bool published = false;
             using (var done = new ManualResetEvent(false))
             {
                 UI(() =>
@@ -352,10 +405,33 @@ namespace Viola
                            data.SetFileDropList(list);
                            data.SetData("Preferred DropEffect",
                                         new MemoryStream(BitConverter.GetBytes(1))); // DROPEFFECT_COPY
-                           Clipboard.SetDataObject(data, true, 12, 80);
-                           ownSequence = ClipboardWindow.GetClipboardSequenceNumber();
                            received = paths;
                            history.Capture(data);
+                           bool finished = false;
+                           for (int attempt = 0; attempt < 12; attempt++)
+                           {
+                               try
+                               {
+                                   uint current = ClipboardWindow.GetClipboardSequenceNumber();
+                                   if (!ClipboardPolicy.ShouldPublish(
+                                           sequenceAtStart, current,
+                                           current == sequenceAtStart ? null : Clipboard.GetDataObject()))
+                                   {
+                                       finished = true;
+                                       break;
+                                   }
+                                   Clipboard.SetDataObject(data, true, 0, 0);
+                                   ownSequence = ClipboardWindow.GetClipboardSequenceNumber();
+                                   published = finished = true;
+                                   break;
+                               }
+                               catch (ExternalException)
+                               {
+                                   Thread.Sleep(80);
+                               }
+                           }
+                           if (!finished)
+                               throw new ExternalException("Windows clipboard stayed busy.");
                        }
                        catch (Exception ex)
                        {
@@ -376,6 +452,7 @@ namespace Viola
             }
             if (error != null)
                 throw new IOException("Verified files remain in cache, but Windows clipboard is busy.", error);
+            return published;
         }
         void Cleanup()
         {
@@ -558,7 +635,7 @@ namespace Viola
                                 identity.Certificate.Export(
                                     System.Security.Cryptography.X509Certificates.X509ContentType.Pfx, password));
                             MessageBox.Show("Pairing file exported. Share its password separately, import it on the " +
-                                            "other PC, and delete the exported file afterward.",
+                                                "other PC, and delete the exported file afterward.",
                                             "Viola pairing");
                         }
                     }

@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.3.0 — 2026-10-21
+- Preserve newer text/image/file clipboard selections when incoming files finish; provide Copy latest received files, and supersede unsent selections changed during folder preparation.
+- Explicitly name saved history during uninstall and preserve application data by default.
 - Added the previously working Viola bridge as a Windows-only CMake companion inside the Deskflow fork.
 - Added Deskflow menu/tray entry points for clipboard history and file sharing/pairing.
 - Preserved upstream text/HTML/bitmap synchronization without a competing text network loop.

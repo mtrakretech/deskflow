@@ -11,6 +11,72 @@ namespace Viola
 {
     public static class HistoryTests
     {
+        public static void LiveClipboardPolicy(string root)
+        {
+            var original = ClipSnapshot.Capture(Clipboard.GetDataObject());
+            if (original == null && Clipboard.GetDataObject() != null &&
+                Clipboard.GetDataObject().GetFormats().Length > 0)
+                throw new InvalidOperationException("Use an empty or standard clipboard for this manual test.");
+            string home = Path.Combine(root, "live-clipboard-policy");
+            Directory.CreateDirectory(home);
+            File.WriteAllText(Path.Combine(home, "welcome.seen"), "test");
+            string cache = Path.Combine(home, "Cache", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(cache);
+            string file = Path.Combine(cache, "verified-receive.txt");
+            File.WriteAllText(file, "Verified staged content");
+            bool offline = Program.Offline;
+            string oldLog = Log.Root;
+            Program.Offline = true;
+            TrayApp app = null;
+            try
+            {
+                app = new TrayApp(home);
+                var publish = typeof(TrayApp).GetMethod("Publish", System.Reflection.BindingFlags.Instance |
+                                                                       System.Reflection.BindingFlags.NonPublic);
+                uint beginning = ClipboardWindow.GetClipboardSequenceNumber();
+                string newer = "Newer clipboard text must survive " + Guid.NewGuid().ToString("N");
+                Clipboard.SetText(newer);
+                var task = System.Threading.Tasks.Task.Run(
+                    () => (bool)publish.Invoke(app, new object[] { new[] { file }, beginning }));
+                Pump(task);
+                Check(!task.Result && Clipboard.GetText() == newer, "Incoming files replaced newer text");
+                Check(File.Exists(file), "Verified staged file disappeared");
+                uint current = ClipboardWindow.GetClipboardSequenceNumber();
+                task = System.Threading.Tasks.Task.Run(
+                    () => (bool)publish.Invoke(app, new object[] { new[] { file }, current }));
+                Pump(task);
+                Check(task.Result && Clipboard.ContainsFileDropList() && Clipboard.GetFileDropList()[0] == file,
+                      "Explicit restore did not make received files available");
+            }
+            finally
+            {
+                if (app != null)
+                {
+                    app.ExitThread();
+                    app.Dispose();
+                }
+                Program.Offline = offline;
+                Log.Root = oldLog;
+                if (original != null)
+                {
+                    using (original) Clipboard.SetDataObject(original.DataObject(), true, 12, 80);
+                }
+                else
+                    Clipboard.Clear();
+            }
+        }
+        static void Pump(System.Threading.Tasks.Task task)
+        {
+            DateTime until = DateTime.UtcNow.AddSeconds(8);
+            while (!task.IsCompleted && DateTime.UtcNow < until)
+            {
+                Application.DoEvents();
+                Thread.Sleep(10);
+            }
+            if (!task.IsCompleted)
+                throw new TimeoutException("Clipboard publication did not return");
+            task.GetAwaiter().GetResult();
+        }
         static void Check(bool value, string message)
         {
             if (!value)
@@ -89,6 +155,23 @@ namespace Viola
         }
         public static void Run(Action<string, Action> test, string root)
         {
+            test("Incoming files preserve newer text, image and file selections",
+                 () =>
+                 {
+                     foreach (string format in new[] { DataFormats.UnicodeText, DataFormats.Html, DataFormats.Rtf,
+                                                       DataFormats.Bitmap, DataFormats.FileDrop, "PNG" })
+                     {
+                         var data = new DataObject();
+                         data.SetData(format, "newer selection");
+                         Check(!ClipboardPolicy.ShouldPublish(10, 11, data),
+                               "Newer clipboard format overwritten: " + format);
+                         Check(ClipboardPolicy.ShouldPublish(10, 10, data), "Unchanged clipboard wrongly deferred");
+                     }
+                     var empty = new DataObject();
+                     empty.SetData("Deskflow Ownership", new MemoryStream(new byte[1]));
+                     Check(ClipboardPolicy.ShouldPublish(10, 11, empty),
+                           "Deskflow's empty ownership marker blocked file publication");
+                 });
             test("History preserves Unicode text, HTML and RTF; encrypted on disk",
                  () =>
                  {

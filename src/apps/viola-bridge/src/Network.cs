@@ -38,11 +38,18 @@ namespace Viola
         {
             var indices = new HashSet<int>();
             // WMI exposes the actual network category; Public and unidentified networks fail closed.
-            using (var q = new ManagementObjectSearcher("root\\StandardCimv2", "SELECT InterfaceIndex, " +
-                                                                               "NetworkCategory FROM " +
-                                                                               "MSFT_NetConnectionProfile")) using (
-                var rows =
-                    q.Get()) foreach (ManagementObject row in rows) if (Convert.ToInt32(row["NetworkCategory"]) == 1)
+            using (
+                var q = new ManagementObjectSearcher(
+                    "root\\StandardCimv2",
+                    "SELECT InterfaceIndex, " + "NetworkCategory FROM " +
+                        "MSFT_NetConnectionProfile")) using (var rows =
+                                                                 q.Get()) foreach (ManagementObject row in
+                                                                                       rows) if (Convert
+                                                                                                     .ToInt32(
+                                                                                                         row
+                                                                                                         ["NetworkCat" +
+                                                                                                          "egory"]) ==
+                                                                                                 1)
                 indices.Add(Convert.ToInt32(row["InterfaceIndex"]));
             var list = new List<LanAddress>();
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
@@ -75,7 +82,7 @@ namespace Viola
         readonly Identity identity;
         readonly string root, node;
         readonly Action<string> status;
-        readonly Action<string[]> publish;
+        readonly Func<string[], uint, bool> publish;
         readonly Action<Progress> progress;
         readonly object gate = new object(), queueGate = new object();
         readonly CancellationTokenSource stop = new CancellationTokenSource();
@@ -87,6 +94,7 @@ namespace Viola
         System.Threading.Timer timer;
         int ticking, sending, receiving, probing;
         string[] pending;
+        uint pendingSequence;
         DateTime queuedAt, lastSeen = DateTime.MinValue;
         readonly Dictionary<string, long> nonces = new Dictionary<string, long>();
         IPAddress peer;
@@ -104,8 +112,8 @@ namespace Viola
                 return sending != 0 || receiving != 0;
             }
         }
-        public Bridge(Identity id, string dir, string nodeId, Action<string> state, Action<string[]> clipboard,
-                      Action<Progress> update)
+        public Bridge(Identity id, string dir, string nodeId, Action<string> state,
+                      Func<string[], uint, bool> clipboard, Action<Progress> update)
         {
             identity = id;
             root = dir;
@@ -434,11 +442,14 @@ namespace Viola
                     if (Interlocked.CompareExchange(ref receiving, 1, 0) != 0)
                         throw new IOException("Receiver busy; sender will retry.");
                     acquired = true;
+                    uint clipboardAtStart = ClipboardWindow.GetClipboardSequenceNumber();
                     Log.Write("Transfer receive start from " + ip);
                     State("Receiving");
-                    Transfer.Receive(s, Path.Combine(root, "Cache"), progress, publish);
-                    Log.Write("Transfer receive completed with SHA-256 verification");
-                    State("Ready to paste");
+                    bool published = false;
+                    Transfer.Receive(s, Path.Combine(root, "Cache"), progress,
+                                     paths => published = publish(paths, clipboardAtStart));
+                    Log.Write("Transfer receive completed with SHA-256 verification; clipboard published=" + published);
+                    State(published ? "Ready to paste" : "Files received: newer clipboard kept");
                 }
             }
             catch (Exception ex)
@@ -454,11 +465,12 @@ namespace Viola
                 lock (gate) clients.Remove(c);
             }
         }
-        public void Queue(string[] paths)
+        public void Queue(string[] paths, uint sequence)
         {
             lock (queueGate)
             {
                 pending = paths;
+                pendingSequence = sequence;
                 queuedAt = DateTime.UtcNow;
             }
             Pump();
@@ -483,11 +495,13 @@ namespace Viola
             Task.Run(() =>
                      {
                          string[] selected = null;
+                         uint selectionSequence = 0;
                          try
                          {
                              lock (queueGate)
                              {
                                  selected = pending;
+                                 selectionSequence = pendingSequence;
                                  pending = null;
                                  if ((DateTime.UtcNow - queuedAt).TotalMinutes > 15)
                                      throw new IOException("Queued clipboard selection expired; copy again.");
@@ -495,6 +509,8 @@ namespace Viola
                              if (selected == null)
                                  return;
                              var m = Manifest.Build(selected);
+                             if (ClipboardWindow.GetClipboardSequenceNumber() != selectionSequence)
+                                 throw new OperationCanceledException("Clipboard changed while preparing files.");
                              Log.Write("Transfer send start: " + m.Entries.Count + " entries / " + m.Total + " bytes");
                              Exception failure = null;
                              for (int attempt = 0; attempt < 3 && !stop.IsCancellationRequested; attempt++)
@@ -535,6 +551,11 @@ namespace Viola
                                  return;
                              Log.Write("Transfer send acknowledged");
                              State("Connected: transfer delivered");
+                         }
+                         catch (OperationCanceledException)
+                         {
+                             Log.Write("Unsent file selection superseded while preparing files");
+                             State("Selection changed before transfer started");
                          }
                          catch (Exception ex)
                          {

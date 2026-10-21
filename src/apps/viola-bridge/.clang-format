@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: (C) 2026 Viola File Bridge contributors
+# SPDX-License-Identifier: MIT
+BasedOnStyle: Microsoft
+Language: CSharp
+IndentWidth: 4
+ColumnLimit: 120
+NamespaceIndentation: All
+AllowShortFunctionsOnASingleLine: None

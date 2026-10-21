@@ -743,6 +743,30 @@ Inoltre, verifica di poter %1 il file di configurazione del server: %2</translat
         <source>&lt;p&gt;Keyboard layout support requires matching layouts on all computers. The following layouts from the other computer are not installed on this computer:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Please install them to enable support for these layouts.&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>&amp;Clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard history…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File sharing and pairing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard tools</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This build does not include Viola clipboard tools. Install the Windows package with clipboard support.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not start clipboard tools. Open the Viola logs for details.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>
@@ -1390,6 +1414,253 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
     <message>
         <source>Encryption Disabled</source>
         <translation>Crittografia disabilitata</translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::ClipboardToolsDialog</name>
+    <message>
+        <source>Clipboard tools</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Search:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search saved text, images and files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pause history</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Content</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Saved</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Preview</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Your saved clipboard items will appear here.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Copy again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Pin / unpin</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save &amp;as…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear history…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Saved on this PC with Windows user encryption. Up to 100 items / 64 MiB; unpinned items expire after 7 days. File entries reference the original files.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard &amp;history</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connecting to clipboard tools…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Status:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paired PC:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import the same password-protected pairing file on your other PC, then compare both fingerprints. Both PCs must use a trusted Private network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair &amp;fingerprint:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export pairing file…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import pairing file…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Setup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Start clipboard tools with Windows (current user)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure trusted network…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connect by IP…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add another PC…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy files in Explorer, wait for “Ready to paste” on the receiving PC, then paste. Text and screenshots share through Deskflow. Clipboard history is saved separately on each PC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File sharing and &amp;pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Logs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear history</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete all saved clipboard history, including pinned items?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connect by IP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other PC’s LAN IPv4 address:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard tools did not respond. Check that the companion is running and up to date.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not start clipboard tools.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard tools response is too large.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update the clipboard companion to use this interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid clipboard tools response.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resume history</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>[Pinned] %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save clipboard item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use Copy again, then paste the referenced files in Explorer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PNG images (*.png)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Text files (*.txt)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export pairing file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing files (*.vfbpair)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose a password of at least 12 characters. Share it separately.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing file exported</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import this file on the other PC and compare fingerprints. Delete the exported file after pairing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import pairing file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not read the pairing file, or it exceeds 64 KiB.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing file password:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirm pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Replace the current pairing with this fingerprint?
+
+%1
+
+Compare it with the other PC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy received files</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

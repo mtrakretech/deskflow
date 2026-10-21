@@ -7,6 +7,11 @@ SPDX-PackageSupplier = "Deskflow Devs"
 SPDX-PackageDownloadLocation = "https://github.com/deskflow/deskflow"
 
 [[annotations]]
+path = ["src/apps/viola-bridge/**"]
+SPDX-FileCopyrightText = "2026 Viola File Bridge contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = [
    ".github/**"
  , ".clang-format"

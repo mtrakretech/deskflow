@@ -1,0 +1,162 @@
+# SPDX-FileCopyrightText: (C) 2026 Viola File Bridge contributors
+# SPDX-License-Identifier: MIT
+name: Deskflow + Viola Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ["viola/**"]
+    paths:
+      - "src/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - ".github/workflows/viola-windows.yml"
+  pull_request:
+    paths:
+      - "src/apps/viola-bridge/**"
+      - "src/lib/gui/MainWindow.*"
+      - "src/lib/gui/dialogs/ClipboardToolsDialog.*"
+      - "src/lib/gui/CMakeLists.txt"
+      - ".github/workflows/viola-windows.yml"
+permissions:
+  contents: read
+concurrency:
+  group: viola-windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build and test clipboard companion
+        shell: pwsh
+        run: ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/viola-tested" -Tests -Large -NoClipboard
+      - name: Upload companion and tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: Viola-0.3.0-companion-Windows
+          path: ${{ runner.temp }}/viola-tested/
+      - name: Setup MSVC
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        with:
+          arch: amd64
+          spectre: true
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          cache: true
+      - name: Cache OpenSSL build
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: viola-openssl-${{ runner.os }}-v1
+      - name: Install OpenSSL
+        shell: pwsh
+        run: C:/vcpkg/vcpkg.exe install openssl:x64-windows --classic
+      - name: Configure fork
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows
+          -DSKIP_BUILD_TESTS=ON -DBUILD_INSTALLER=ON -DBUILD_VIOLA_BRIDGE=ON
+          -DPACKAGE_VERSION_LABEL=viola-0.3.0
+          -DBUILD_VIOLA_UI_SMOKE=ON
+      - name: Build native clipboard UI test
+        shell: pwsh
+        run: |
+          cmake --build build --target viola-ui-smoke --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Qt clipboard UI test build failed' }
+      - name: Verify native clipboard UI with isolated fixture data
+        shell: pwsh
+        run: |
+          windeployqt --no-translations build/bin/viola-ui-smoke.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Qt test deployment failed' }
+          $qtRoot = Split-Path (Split-Path (Get-Command windeployqt.exe).Source -Parent) -Parent
+          Copy-Item (Join-Path $qtRoot 'plugins/platforms/qoffscreen.dll') build/bin/platforms/qoffscreen.dll -Force
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          ./build/bin/viola-ui-smoke.exe "$env:RUNNER_TEMP/viola-tested/Viola.Tests.exe" "$env:RUNNER_TEMP/viola-tested/ViolaFileBridge.exe" ui-screenshots
+          if ($LASTEXITCODE -ne 0) { throw 'Qt clipboard UI smoke test failed' }
+      - name: Upload native UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deskflow-Viola-native-UI
+          path: ui-screenshots/
+      - name: Build complete Windows fork
+        shell: pwsh
+        run: |
+          cmake --build build --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow build failed' }
+          cpack --config build/CPackConfig.cmake -G ZIP -B dist
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow ZIP packaging failed' }
+      - name: Build single setup with forked Deskflow included
+        shell: pwsh
+        run: |
+          $payload = (Get-ChildItem dist -Filter '*.zip' | Select-Object -First 1).FullName
+          if (-not $payload) { throw 'Deskflow ZIP missing' }
+          Invoke-WebRequest https://aka.ms/vs/17/release/vc_redist.x64.exe -OutFile "$env:RUNNER_TEMP/vc_redist.x64.exe"
+          ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/deskflow-viola" -DeskflowPayload $payload -VCRedist "$env:RUNNER_TEMP/vc_redist.x64.exe"
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/deskflow-viola/ViolaFileBridge-Setup.exe" release-assets/Deskflow-Viola-0.3.0-Windows-x64-Setup.exe
+          ./src/apps/viola-bridge/PackagePortable.ps1 -InputZip $payload -OutputDirectory release-assets -SourceCommit $env:GITHUB_SHA
+          git archive --format=zip --output=release-assets/Deskflow-Viola-0.3.0-Source.zip HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          $hashes = Get-FileHash release-assets/*.exe,release-assets/*.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" }
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'release-assets/SHA256SUMS.txt'), ($hashes -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+      - name: Upload complete setup and portable fork
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deskflow-Viola-0.3.0-Windows-x64
+          path: release-assets/
+          if-no-files-found: error
+  release:
+    name: Publish portable Windows prerelease
+    needs: windows
+    if: github.event_name != 'pull_request' && github.repository == 'mtrakretech/deskflow'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Deskflow-Viola-0.3.0-Windows-x64
+          path: release-assets
+      - name: Verify checksums and publish release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum --check SHA256SUMS.txt
+          tag="viola-v0.3.0-${GITHUB_SHA:0:12}"
+          cat > RELEASE-NOTES.md <<EOF
+          Windows x64 preview of Deskflow with Viola file sharing and encrypted clipboard history.
+
+          **Portable (recommended):** Download **Deskflow-Viola-0.3.0-Windows-x64-Portable.zip**, extract the complete folder, then run **deskflow.exe**. Qt, OpenSSL, the Visual C++ runtime DLLs and the clipboard companion are included. No installer or service is required.
+
+          **Install normally:** Download **Deskflow-Viola-0.3.0-Windows-x64-Setup.exe**.
+
+          Before switching versions, exit existing Deskflow and Viola tray apps. Configure Deskflow's server/client role and screen layout, then use **Clipboard > File sharing and pairing** on your trusted Private LAN. Existing per-user Viola pairing is reused. History remains local to each PC. See **README-FIRST.txt** in the portable folder.
+
+          Includes corresponding source and SHA-256 checksums. This is an independent Windows preview fork, not an upstream Deskflow release.
+
+          Built from ${GITHUB_SHA}. Validated by companion tests (including >4 GiB), native Qt UI smoke checks and complete Windows packaging.
+          Build: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+          if gh release view "$tag" >/dev/null 2>&1; then
+            actual=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag" --jq .object.sha)
+            test "$actual" = "$GITHUB_SHA"
+            gh release upload "$tag" ./*.exe ./*.zip SHA256SUMS.txt --clobber
+            gh release edit "$tag" --notes-file RELEASE-NOTES.md
+          else
+            gh release create "$tag" ./*.exe ./*.zip SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title "Deskflow + Viola 0.3.0 — Windows portable (${GITHUB_SHA:0:7})" --notes-file RELEASE-NOTES.md
+          fi
+          echo "### Download Windows portable or setup" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"

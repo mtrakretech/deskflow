@@ -47,5 +47,13 @@ CMakeFiles/*
 /scripts
 
 # Ai helperfilers
+/src/apps/viola-bridge/out/
+*.vfbpair
+*.dpapi
+Viola-Add-PC*.zip
+Pairing.vfbpair
+**/History/
+**/Cache/
+**/Logs/
 **/[cC]laude.[mM][dD]
 **/CLAUDE.[mM][dD]

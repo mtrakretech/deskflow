@@ -114,6 +114,9 @@ private:
 
   void createMenuBar();
   void setupTrayIcon();
+#ifdef Q_OS_WIN
+  void openClipboardTools(const QString &command, bool reportMissing = true);
+#endif
   void applyConfig();
   void setTrayIcon();
   void handleUnrecognisedClient(const QString &clientName);

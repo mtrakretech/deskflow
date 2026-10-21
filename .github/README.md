@@ -37,6 +37,23 @@ and find saved text and screenshots in a familiar Deskflow interface.
 
 History is encrypted for the current Windows user and saved **on each PC separately**. Deskflow handles live text/image sharing; Viola handles file transfer and local history.
 
+## Feels like Deskflow
+
+The clipboard tools use the same Qt interface as Deskflow: familiar tabs, native controls, and the application's theme and fonts.
+
+![Clipboard history in Deskflow, with search, saved items, text preview and clipboard actions](../docs/viola/clipboard-history.png)
+
+<details>
+<summary><strong>Screenshot previews and pairing settings</strong></summary>
+
+![Saved screenshot preview](../docs/viola/clipboard-image.png)
+
+![File sharing and pairing settings](../docs/viola/clipboard-pairing.png)
+
+</details>
+
+Screenshots use isolated sample data from the native UI test. Your history and pairing data stay on your PC.
+
 ## Start on two PCs
 
 1. Open a successful **Deskflow + Viola Windows** [workflow run](https://github.com/mtrakretech/deskflow/actions/workflows/viola-windows.yml?query=branch%3Aviola%2Fclipboard-and-easy-setup). Download **Deskflow-Viola-0.3.0-Windows-x64** from its artifacts and extract it.

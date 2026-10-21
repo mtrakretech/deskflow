@@ -78,6 +78,8 @@ jobs:
         run: |
           windeployqt --no-translations build/bin/viola-ui-smoke.exe
           if ($LASTEXITCODE -ne 0) { throw 'Qt test deployment failed' }
+          $qtRoot = Split-Path (Split-Path (Get-Command windeployqt.exe).Source -Parent) -Parent
+          Copy-Item (Join-Path $qtRoot 'plugins/platforms/qoffscreen.dll') build/bin/platforms/qoffscreen.dll -Force
           $env:QT_QPA_PLATFORM = 'offscreen'
           ./build/bin/viola-ui-smoke.exe "$env:RUNNER_TEMP/viola-tested/Viola.Tests.exe" "$env:RUNNER_TEMP/viola-tested/ViolaFileBridge.exe" ui-screenshots
           if ($LASTEXITCODE -ne 0) { throw 'Qt clipboard UI smoke test failed' }

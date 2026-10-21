@@ -172,7 +172,20 @@ namespace Viola
                                                                         RedirectStandardInput = true,
                                                                         RedirectStandardOutput = true,
                                                                         RedirectStandardError = true };
-                             using (var helper = System.Diagnostics.Process.Start(info))
+                             // Framework Process builds its stdin StreamWriter from Console.InputEncoding.
+                             // A BOM-bearing runner encoding would prefix our binary length header.
+                             var previousEncoding = Console.InputEncoding;
+                             System.Diagnostics.Process child;
+                             try
+                             {
+                                 Console.InputEncoding = new System.Text.UTF8Encoding(false);
+                                 child = System.Diagnostics.Process.Start(info);
+                             }
+                             finally
+                             {
+                                 Console.InputEncoding = previousEncoding;
+                             }
+                             using (var helper = child)
                              {
                                  try
                                  {

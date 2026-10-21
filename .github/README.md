@@ -17,12 +17,27 @@ and find saved text and screenshots in a familiar Deskflow interface.
 [![Platform](https://img.shields.io/badge/Viola-Windows_10_%2F_11-0078D4?logo=windows)](../src/apps/viola-bridge/README.md)
 [![Source](https://img.shields.io/badge/source-open-238636?logo=github)](https://github.com/mtrakretech/deskflow/tree/viola/clipboard-and-easy-setup)
 
-[Windows builds](https://github.com/mtrakretech/deskflow/actions/workflows/viola-windows.yml?query=branch%3Aviola%2Fclipboard-and-easy-setup) · [Setup guide](../src/apps/viola-bridge/README.md) · [Security](../src/apps/viola-bridge/SECURITY.md) · [Upstream Deskflow](https://github.com/deskflow/deskflow)
+[Download portable / installer](https://github.com/mtrakretech/deskflow/releases) · [Setup guide](../src/apps/viola-bridge/README.md) · [Security](../src/apps/viola-bridge/SECURITY.md) · [Upstream Deskflow](https://github.com/deskflow/deskflow)
 
 </div>
 
 > [!NOTE]
-> This is an independent Windows-focused fork. Development is on `viola/clipboard-and-easy-setup` in [pull request #1](https://github.com/mtrakretech/deskflow/pull/1). Packages are available as workflow artifacts; a tagged public release has not been published.
+> This is an independent Windows-focused fork. Development is on `viola/clipboard-and-easy-setup` in [pull request #1](https://github.com/mtrakretech/deskflow/pull/1). Successful Windows builds publish preview packages to [GitHub Releases](https://github.com/mtrakretech/deskflow/releases).
+
+## Download and run
+
+Open [GitHub Releases](https://github.com/mtrakretech/deskflow/releases) and choose the newest **Deskflow + Viola Windows** preview.
+
+| Download | How to use it |
+| :--- | :--- |
+| **Deskflow-Viola-0.3.0-Windows-x64-Portable.zip** | **Recommended:** extract the entire folder, then double-click **deskflow.exe**. Includes the companion, Qt, OpenSSL and Visual C++ runtime DLLs. No installer or Windows service needed. |
+| **Deskflow-Viola-0.3.0-Windows-x64-Setup.exe** | Run the EXE for a normal per-user installation with shortcuts and uninstall support. |
+| **Deskflow-Viola-0.3.0-Source.zip** | Corresponding source for building or inspecting this fork. |
+| **SHA256SUMS.txt** | Checksums for the portable, setup and source downloads. |
+
+Before switching versions, exit the existing Deskflow and Viola tray apps. Keep all extracted files beside **deskflow.exe** and run it from a writable folder. Configure the normal server/client role and screen arrangement on both PCs, then open **Clipboard → File sharing and pairing**.
+
+Portable Deskflow settings stay beside the EXE under `settings`. Viola's protected pairing, history and received cache stay in the current user's `%LOCALAPPDATA%\ViolaFileBridge`; existing pairing is reused. Optional trusted-network/firewall setup requests administrator approval. These are Windows x64 previews.
 
 ## Your desk, connected
 
@@ -56,8 +71,8 @@ Screenshots use isolated sample data from the native UI test. Your history and p
 
 ## Start on two PCs
 
-1. Open a successful **Deskflow + Viola Windows** [workflow run](https://github.com/mtrakretech/deskflow/actions/workflows/viola-windows.yml?query=branch%3Aviola%2Fclipboard-and-easy-setup). Download **Deskflow-Viola-0.3.0-Windows-x64** from its artifacts and extract it.
-2. Run **Deskflow-Viola-0.3.0-Setup.exe** on each PC. Configure the keyboard/mouse server, client and screen arrangement in Deskflow as usual.
+1. Download the portable ZIP or setup EXE from [GitHub Releases](https://github.com/mtrakretech/deskflow/releases).
+2. Extract the portable ZIP and run **deskflow.exe**, or run the setup EXE, on each PC. Configure the keyboard/mouse server, client and screen arrangement in Deskflow as usual.
 3. Open **Clipboard → File sharing and pairing**. Export a password-protected pairing file from one PC and import it on the other. Compare the full fingerprints, then delete the exported file.
 4. Use **Configure trusted network…** on both PCs to select your trusted LAN and apply the app-specific Private firewall rules. Windows may request administrator approval for this step.
 5. When the status reads **Connected**, copy a small file in Explorer. Wait for **Ready to paste** on the receiving PC, then press **Ctrl+V** in its destination folder.

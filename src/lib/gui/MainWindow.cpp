@@ -726,9 +726,12 @@ void MainWindow::openClipboardTools(const QString &command, bool reportMissing)
   const auto installedDirectory =
       QDir(qEnvironmentVariable("LOCALAPPDATA")).filePath(QStringLiteral("ViolaFileBridge/App"));
   const auto installedExecutable = QDir(installedDirectory).filePath(QStringLiteral("ViolaFileBridge.exe"));
-  // The full per-user installer keeps its invitation-capable setup beside this copy.
-  // Prefer it over the portable copy inside the nested Deskflow payload.
-  if (QFileInfo::exists(installedExecutable) &&
+  // Only the installed fork uses its parent companion. An extracted portable
+  // build must use its bundled version even when an older install exists.
+  const auto installedGuiDirectory = QDir(installedDirectory).filePath(QStringLiteral("Deskflow"));
+  if (QDir::cleanPath(QCoreApplication::applicationDirPath()).compare(installedGuiDirectory, Qt::CaseInsensitive) ==
+          0 &&
+      QFileInfo::exists(installedExecutable) &&
       QFileInfo::exists(QDir(installedDirectory).filePath(QStringLiteral("NetworkSetup.ps1")))) {
     executable = installedExecutable;
   }

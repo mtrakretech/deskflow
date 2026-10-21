@@ -101,11 +101,62 @@ jobs:
           if (-not $payload) { throw 'Deskflow ZIP missing' }
           Invoke-WebRequest https://aka.ms/vs/17/release/vc_redist.x64.exe -OutFile "$env:RUNNER_TEMP/vc_redist.x64.exe"
           ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/deskflow-viola" -DeskflowPayload $payload -VCRedist "$env:RUNNER_TEMP/vc_redist.x64.exe"
-          Copy-Item "$env:RUNNER_TEMP/deskflow-viola/ViolaFileBridge-Setup.exe" dist/Deskflow-Viola-0.3.0-Setup.exe
-          Get-FileHash dist/*.exe,dist/*.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/deskflow-viola/ViolaFileBridge-Setup.exe" release-assets/Deskflow-Viola-0.3.0-Windows-x64-Setup.exe
+          ./src/apps/viola-bridge/PackagePortable.ps1 -InputZip $payload -OutputDirectory release-assets -SourceCommit $env:GITHUB_SHA
+          git archive --format=zip --output=release-assets/Deskflow-Viola-0.3.0-Source.zip HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          $hashes = Get-FileHash release-assets/*.exe,release-assets/*.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" }
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'release-assets/SHA256SUMS.txt'), ($hashes -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
       - name: Upload complete setup and portable fork
         uses: actions/upload-artifact@v4
         with:
           name: Deskflow-Viola-0.3.0-Windows-x64
-          path: dist/
+          path: release-assets/
           if-no-files-found: error
+  release:
+    name: Publish portable Windows prerelease
+    needs: windows
+    if: github.event_name != 'pull_request' && github.repository == 'mtrakretech/deskflow'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Deskflow-Viola-0.3.0-Windows-x64
+          path: release-assets
+      - name: Verify checksums and publish release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum --check SHA256SUMS.txt
+          tag="viola-v0.3.0-${GITHUB_SHA:0:12}"
+          cat > RELEASE-NOTES.md <<EOF
+          Windows x64 preview of Deskflow with Viola file sharing and encrypted clipboard history.
+
+          **Portable (recommended):** Download **Deskflow-Viola-0.3.0-Windows-x64-Portable.zip**, extract the complete folder, then run **deskflow.exe**. Qt, OpenSSL, the Visual C++ runtime DLLs and the clipboard companion are included. No installer or service is required.
+
+          **Install normally:** Download **Deskflow-Viola-0.3.0-Windows-x64-Setup.exe**.
+
+          Before switching versions, exit existing Deskflow and Viola tray apps. Configure Deskflow's server/client role and screen layout, then use **Clipboard > File sharing and pairing** on your trusted Private LAN. Existing per-user Viola pairing is reused. History remains local to each PC. See **README-FIRST.txt** in the portable folder.
+
+          Includes corresponding source and SHA-256 checksums. This is an independent Windows preview fork, not an upstream Deskflow release.
+
+          Built from ${GITHUB_SHA}. Validated by companion tests (including >4 GiB), native Qt UI smoke checks and complete Windows packaging.
+          Build: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+          if gh release view "$tag" >/dev/null 2>&1; then
+            actual=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag" --jq .object.sha)
+            test "$actual" = "$GITHUB_SHA"
+            gh release upload "$tag" ./*.exe ./*.zip SHA256SUMS.txt --clobber
+            gh release edit "$tag" --notes-file RELEASE-NOTES.md
+          else
+            gh release create "$tag" ./*.exe ./*.zip SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title "Deskflow + Viola 0.3.0 — Windows portable (${GITHUB_SHA:0:7})" --notes-file RELEASE-NOTES.md
+          fi
+          echo "### Download Windows portable or setup" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"

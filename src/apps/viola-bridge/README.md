@@ -4,6 +4,8 @@ This fork combines upstream Deskflow mouse/keyboard, Unicode text, HTML and bitm
 
 ## One setup on each PC
 
+The complete fork opens **Clipboard > Clipboard history** and **Clipboard > File sharing and pairing** in native Qt dialogs. They inherit Deskflow's palette, fonts and widget style, including its light/dark appearance. History and pairing actions use the running companion through its current-user-only local command channel. The standalone companion keeps its Windows forms for users who have not installed the fork.
+
 Use **Deskflow-Viola-0.3.0-Setup.exe** from the Windows build artifact for a new PC. It includes the compiled fork, clipboard companion, startup option and firewall helper. Existing users can install **ViolaFileBridge-Setup.exe** from the companion artifact beside their current Deskflow without replacing it. No compiler, Visual Studio, Electron or separate .NET runtime download is needed on maintained Windows 10/11 with .NET Framework 4.8. The forked Deskflow uses its bundled app-local Microsoft VC++ runtime DLLs; the included Microsoft-signed runtime installer is only a fallback if those DLLs are missing. Original Deskflow installs/configurations are not removed. The per-user full bundle uses the Desktop process mode; installing the optional secure-desktop service remains a separate upstream MSI capability.
 
 If an original Deskflow is already running, setup keeps it running and does not autostart a second Deskflow input server. Use the companion-only installer to upgrade an existing working pair. To switch to the full fork later, exit the original Deskflow and launch the bundled fork from `App\Deskflow\deskflow.exe`.

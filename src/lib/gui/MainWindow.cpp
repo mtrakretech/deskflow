@@ -15,6 +15,7 @@
 
 #include "dialogs/AboutDialog.h"
 #include "dialogs/ClientConfigDialog.h"
+#include "dialogs/ClipboardToolsDialog.h"
 #include "dialogs/FingerprintDialog.h"
 #include "dialogs/HelpDialog.h"
 #include "dialogs/ServerConfigDialog.h"
@@ -738,6 +739,11 @@ void MainWindow::openClipboardTools(const QString &command, bool reportMissing)
           tr("This build does not include Viola clipboard tools. Install the Windows package with clipboard support.")
       );
     }
+    return;
+  }
+  if (command == QStringLiteral("--history") || command == QStringLiteral("--settings")) {
+    auto dialog = new ClipboardToolsDialog(executable, command == QStringLiteral("--history"), this);
+    dialog->show();
     return;
   }
   if (!QProcess::startDetached(executable, {command}) && reportMissing) {

@@ -155,6 +155,88 @@ namespace Viola
         }
         public static void Run(Action<string, Action> test, string root)
         {
+            test("Qt UI channel frames Unicode responses and rejects invalid lengths",
+                 () =>
+                 {
+                     using (var memory = new MemoryStream())
+                     {
+                         Commands.WriteMessage(memory, "{\"text\":\"Viola — مرحبا\"}");
+                         memory.Position = 0;
+                         Check(Commands.ReadMessage(memory, 1024).Contains("مرحبا"), "UTF-8 response damaged");
+                     }
+                     using (var memory = new MemoryStream(BitConverter.GetBytes(-1)))
+                         Reject(() => Commands.ReadMessage(memory, 1024));
+                     using (var memory = new MemoryStream(BitConverter.GetBytes(1025)))
+                         Reject(() => Commands.ReadMessage(memory, 1024));
+                 });
+            test("Qt UI actions use the running encrypted store and validate pairing confirmation",
+                 () =>
+                 {
+                     string home = Path.Combine(root, "qt-ui-api");
+                     Directory.CreateDirectory(home);
+                     File.WriteAllText(Path.Combine(home, "welcome.seen"), "test");
+                     var seed = new HistoryStore(home);
+                     using (var clip = new ClipSnapshot { Text = "Native Qt clipboard preview مرحبا" }) seed.Add(clip);
+                     bool offline = Program.Offline;
+                     string oldLog = Log.Root;
+                     Program.Offline = true;
+                     TrayApp app = null;
+                     try
+                     {
+                         app = new TrayApp(home);
+                         Func<object, System.Collections.Generic.Dictionary<string, object>> query = request =>
+                         {
+                             var task = System.Threading.Tasks.Task.Run(
+                                 () => Commands.Query(home, UiJson.Serializer().Serialize(request)));
+                             Pump(task);
+                             return UiJson.Serializer()
+                                 .Deserialize<System.Collections.Generic.Dictionary<string, object>>(task.Result);
+                         };
+                         var listing = query(new { op = "list", search = "Native Qt" });
+                         Check((bool)listing["ok"], "List failed");
+                         var entries = (System.Collections.ArrayList)listing["items"];
+                         Check(entries.Count == 1, "Wrong history list");
+                         string id = (string)((System.Collections.Generic.Dictionary<string, object>)entries[0])["id"];
+                         var preview = query(new { op = "preview", id = id });
+                         Check(((string)preview["text"]).Contains("مرحبا"), "Preview damaged");
+                         Check(!(bool)query(new { op = "preview", id = "../escape" })["ok"], "Unsafe ID accepted");
+                         Check(!(bool)query(new { op = "shell", command = "anything" })["ok"],
+                               "Unknown operation accepted");
+                         Check((bool)query(new { op = "pin", id = id })["ok"], "Pin failed");
+                         Check((bool)query(new { op = "pause" })["ok"] &&
+                                   File.Exists(Path.Combine(home, "history.paused")),
+                               "Pause not persisted");
+                         Check((bool)query(new { op = "pause" })["ok"] &&
+                                   !File.Exists(Path.Combine(home, "history.paused")),
+                               "Resume not persisted");
+                         Check(!(bool)query(new { op = "pair-export", password = "short" })["ok"],
+                               "Weak password accepted");
+                         string password = "Isolated Qt API test password";
+                         var exported = query(new { op = "pair-export", password = password });
+                         string data = (string)exported["data"];
+                         var inspected = query(new { op = "pair-inspect", data = data, password = password });
+                         Check((bool)inspected["ok"] && ((string)inspected["fingerprint"]).Length == 64,
+                               "Inspect failed");
+                         Check(!(bool)query(new { op = "pair-import", data = data, password = password,
+                                                  confirmedFingerprint = "wrong" })["ok"],
+                               "Unconfirmed pairing accepted");
+                         Check((bool)query(new { op = "pair-import", data = data, password = password,
+                                                 confirmedFingerprint = inspected["fingerprint"] })["ok"],
+                               "Confirmed pairing failed");
+                         Check((bool)query(new { op = "delete", id = id })["ok"], "Delete failed");
+                         Check((bool)query(new { op = "clear" })["ok"], "Clear failed");
+                     }
+                     finally
+                     {
+                         if (app != null)
+                         {
+                             app.ExitThread();
+                             app.Dispose();
+                         }
+                         Program.Offline = offline;
+                         Log.Root = oldLog;
+                     }
+                 });
             test("Incoming files preserve newer text, image and file selections",
                  () =>
                  {

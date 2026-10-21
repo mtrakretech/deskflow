@@ -6,6 +6,17 @@ set(target gui)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+if(WIN32)
+  option(BUILD_VIOLA_UI_SMOKE "Build the isolated clipboard Qt UI smoke test" OFF)
+  if(BUILD_VIOLA_UI_SMOKE)
+    add_executable(viola-ui-smoke
+      dialogs/ClipboardToolsDialog.cpp
+      dialogs/ClipboardToolsDialog.h
+      tests/ClipboardToolsSmoke.cpp)
+    target_link_libraries(viola-ui-smoke PRIVATE Qt6::Widgets)
+  endif()
+endif()
+
 if(APPLE)
   set (platform_sources
     OSXHelpers.h
@@ -53,6 +64,8 @@ add_library(${target} STATIC
   dialogs/ClientConfigDialog.h
   dialogs/ClientConfigDialog.cpp
   dialogs/ClientConfigDialog.ui
+  dialogs/ClipboardToolsDialog.cpp
+  dialogs/ClipboardToolsDialog.h
   dialogs/ComputerSettingsDialog.cpp
   dialogs/ComputerSettingsDialog.h
   dialogs/ComputerSettingsDialog.ui

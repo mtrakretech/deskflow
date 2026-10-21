@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.3.0 — 2026-10-21
+- Added integrated Qt history and pairing dialogs that inherit Deskflow's appearance, plus bounded current-user IPC for their actions and isolated native UI smoke coverage.
+- Refreshed the fork README with a feature overview, setup steps, build links and preserved upstream documentation.
 - Preserve newer text/image/file clipboard selections when incoming files finish; provide Copy latest received files, and supersede unsent selections changed during folder preparation.
 - Explicitly name saved history during uninstall and preserve application data by default.
 - Added the previously working Viola bridge as a Windows-only CMake companion inside the Deskflow fork.

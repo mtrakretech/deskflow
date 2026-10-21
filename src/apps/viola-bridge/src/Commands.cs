@@ -15,11 +15,11 @@ namespace Viola
         volatile bool stopping;
         NamedPipeServerStream server;
         readonly string name;
-        public Commands(string pipe, Action<string> execute)
+        public Commands(string pipe, Action<string> execute, Func<string, string> query = null)
         {
             name = pipe;
-            var thread = new System.Threading.Thread(() => Listen(execute)) { IsBackground = true,
-                                                                              Name = "Viola local commands" };
+            var thread = new System.Threading.Thread(() => Listen(execute, query)) { IsBackground = true,
+                                                                                     Name = "Viola local commands" };
             thread.Start();
         }
         public static string Name(string root)
@@ -30,7 +30,7 @@ namespace Viola
                                                                  Path.GetFullPath(root).ToLowerInvariant())))
                        .Substring(0, 24);
         }
-        void Listen(Action<string> execute)
+        void Listen(Action<string> execute, Func<string, string> query)
         {
             while (!stopping)
                 try
@@ -55,8 +55,16 @@ namespace Viola
                                 continue;
                             n = pipe.EndRead(read);
                         }
-                        if (n != 1 || b[0] > 3)
+                        if (n != 1 || b[0] > 4)
                             continue;
+                        if (b[0] == 4)
+                        {
+                            string request = ReadMessage(pipe, 256 * 1024);
+                            WriteMessage(pipe, query == null
+                                                   ? "{\"ok\":false,\"error\":\"Update the clipboard companion.\"}"
+                                                   : query(request));
+                            continue;
+                        }
                         string[] commands = { "--background", "--history", "--settings", "--exit" };
                         pipe.WriteByte(1);
                         pipe.Flush();
@@ -75,6 +83,63 @@ namespace Viola
                     Log.Write("Local command: " + ex.GetType().Name);
                     System.Threading.Thread.Sleep(500);
                 }
+        }
+        static byte[] ReadExactly(Stream stream, int length)
+        {
+            var result = new byte[length];
+            int offset = 0;
+            while (offset < length)
+            {
+                var read = stream.BeginRead(result, offset, length - offset, null, null);
+                int n;
+                using (read.AsyncWaitHandle)
+                {
+                    if (!read.AsyncWaitHandle.WaitOne(10000))
+                        throw new TimeoutException("Clipboard tools request timed out.");
+                    n = stream.EndRead(read);
+                }
+                if (n == 0)
+                    throw new EndOfStreamException();
+                offset += n;
+            }
+            return result;
+        }
+        internal static string ReadMessage(Stream stream, int limit)
+        {
+            int length = BitConverter.ToInt32(ReadExactly(stream, 4), 0);
+            if (length < 0 || length > limit)
+                throw new InvalidDataException("Clipboard tools message size.");
+            return new UTF8Encoding(false, true).GetString(ReadExactly(stream, length));
+        }
+        internal static void WriteMessage(Stream stream, string message)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(message);
+            if (bytes.Length > 32 * 1024 * 1024)
+                throw new InvalidDataException("Clipboard tools response size.");
+            byte[] length = BitConverter.GetBytes(bytes.Length);
+            stream.Write(length, 0, length.Length);
+            // Bound writes as well as reads so an abandoned UI cannot strand the listener.
+            for (int offset = 0; offset < bytes.Length; offset += 65536)
+            {
+                var write = stream.BeginWrite(bytes, offset, Math.Min(65536, bytes.Length - offset), null, null);
+                using (write.AsyncWaitHandle)
+                {
+                    if (!write.AsyncWaitHandle.WaitOne(10000))
+                        throw new TimeoutException();
+                    stream.EndWrite(write);
+                }
+            }
+            stream.Flush();
+        }
+        public static string Query(string root, string request)
+        {
+            using (var pipe = new NamedPipeClientStream(".", Name(root), PipeDirection.InOut, PipeOptions.Asynchronous))
+            {
+                pipe.Connect(3000);
+                pipe.WriteByte(4);
+                WriteMessage(pipe, request);
+                return ReadMessage(pipe, 32 * 1024 * 1024);
+            }
         }
         public static bool Send(string root, string command)
         {

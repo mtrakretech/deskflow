@@ -180,6 +180,30 @@ namespace Viola
         [STAThread]
         public static int Main(string[] args)
         {
+            if (args.Length == 2 && args[0] == "--ui-fixture")
+            {
+                string home = Path.GetFullPath(args[1]);
+                Directory.CreateDirectory(home);
+                File.WriteAllText(Path.Combine(home, "welcome.seen"), "fixture");
+                var store = new HistoryStore(home);
+                using (var clip = new ClipSnapshot {
+                    Text = "Welcome to your clipboard history.\r\nCopy once. Find it here later."
+                }) store.Add(clip);
+                using (var image = new System.Drawing.Bitmap(400, 240))
+                {
+                    using (var graphics = System.Drawing.Graphics.FromImage(image))
+                    {
+                        graphics.Clear(System.Drawing.Color.FromArgb(42, 56, 76));
+                        using (var font = new System.Drawing.Font("Segoe UI", 24))
+                            graphics.DrawString("Deskflow + Viola", font, System.Drawing.Brushes.White, 35, 90);
+                    }
+                    using (var clip = new ClipSnapshot { Image = new System.Drawing.Bitmap(image) }) store.Add(clip);
+                }
+                using (var clip = new ClipSnapshot {
+                    Text = "Project notes\r\nText, screenshots and files — saved on this PC."
+                }) store.Add(clip);
+                return Program.Main(new[] { "--offline", "--data-root", home });
+            }
             liveOnly = args.Contains("--live-only");
             liveHistoryOnly = args.Contains("--live-history-only");
             liveClipboardOnly = args.Contains("--live-clipboard-only");

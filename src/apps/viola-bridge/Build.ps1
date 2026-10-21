@@ -9,8 +9,8 @@ $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 Push-Location $PSScriptRoot
 try {
-    $refs=@('/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Security.dll','/r:System.Management.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll')
-    $sources=@('src\Core.cs','src\Network.cs','src\History.cs','src\Commands.cs','src\App.cs')
+    $refs=@('/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Security.dll','/r:System.Management.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll')
+    $sources=@('src\Core.cs','src\Network.cs','src\History.cs','src\Commands.cs','src\UiApi.cs','src\App.cs')
     & $compiler /nologo /target:winexe /platform:anycpu /optimize+ /win32manifest:src\app.manifest "/out:$OutputDirectory\ViolaFileBridge.exe" @refs @sources
     if($LASTEXITCODE -ne 0){throw 'App compilation failed'}
     Copy-Item src\ViolaFileBridge.exe.config,Firewall.ps1,NetworkSetup.ps1,README.md,SECURITY.md,CHANGELOG.md,LICENSE -Destination $OutputDirectory -Force

@@ -14,6 +14,8 @@ on:
     paths:
       - "src/apps/viola-bridge/**"
       - "src/lib/gui/MainWindow.*"
+      - "src/lib/gui/dialogs/ClipboardToolsDialog.*"
+      - "src/lib/gui/CMakeLists.txt"
       - ".github/workflows/viola-windows.yml"
 permissions:
   contents: read
@@ -63,6 +65,7 @@ jobs:
           -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows
           -DSKIP_BUILD_TESTS=ON -DBUILD_INSTALLER=ON -DBUILD_VIOLA_BRIDGE=ON
           -DPACKAGE_VERSION_LABEL=viola-0.3.0
+          -DBUILD_VIOLA_UI_SMOKE=ON
       - name: Build complete Windows fork
         shell: pwsh
         run: |
@@ -70,6 +73,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Deskflow build failed' }
           cpack --config build/CPackConfig.cmake -G ZIP -B dist
           if ($LASTEXITCODE -ne 0) { throw 'Deskflow ZIP packaging failed' }
+      - name: Verify native clipboard UI with isolated fixture data
+        shell: pwsh
+        run: |
+          windeployqt --no-translations build/bin/viola-ui-smoke.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Qt test deployment failed' }
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          ./build/bin/viola-ui-smoke.exe "$env:RUNNER_TEMP/viola-tested/Viola.Tests.exe" "$env:RUNNER_TEMP/viola-tested/ViolaFileBridge.exe" ui-screenshots
+          if ($LASTEXITCODE -ne 0) { throw 'Qt clipboard UI smoke test failed' }
+      - name: Upload native UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deskflow-Viola-native-UI
+          path: ui-screenshots/
       - name: Build single setup with forked Deskflow included
         shell: pwsh
         run: |

@@ -71,7 +71,7 @@ namespace Viola
             base.OnHandleDestroyed(e);
         }
     }
-    public sealed class TrayApp : ApplicationContext
+    public sealed partial class TrayApp : ApplicationContext
     {
         readonly ClipboardWindow window = new ClipboardWindow();
         readonly NotifyIcon tray = new NotifyIcon();
@@ -93,6 +93,7 @@ namespace Viola
         bool exiting;
         readonly HistoryService history;
         readonly Commands commands;
+        readonly ToolStripMenuItem pauseItem;
         public TrayApp(string path)
         {
             root = path;
@@ -108,7 +109,7 @@ namespace Viola
             history.Paused = File.Exists(Path.Combine(root, "history.paused"));
             var handle = window.Handle;
             window.Changed += ClipboardChanged;
-            commands = new Commands(Commands.Name(root), command => UI(() => Command(command)));
+            commands = new Commands(Commands.Name(root), command => UI(() => Command(command)), QueryUi);
             debounce.Interval = 160;
             debounce.Tick += (s, e) => ReadClipboard();
             var menu = new ContextMenuStrip();
@@ -120,6 +121,7 @@ namespace Viola
             menu.Items.Add("Clipboard history — text and screenshots", null, (s, e) => ShowHistory());
             var pause =
                 new ToolStripMenuItem("Pause clipboard history") { CheckOnClick = true, Checked = history.Paused };
+            pauseItem = pause;
             pause.CheckedChanged += (s, e) =>
             {
                 history.Paused = pause.Checked;
@@ -823,6 +825,20 @@ namespace Viola
             int rootIndex = Array.IndexOf(args, "--data-root");
             if (rootIndex >= 0 && rootIndex + 1 < args.Length)
                 Log.Root = Path.GetFullPath(args[rootIndex + 1]);
+            if (args.Contains("--ui"))
+            {
+                string response;
+                try
+                {
+                    response = Commands.Query(Log.Root, Commands.ReadMessage(Console.OpenStandardInput(), 256 * 1024));
+                }
+                catch (Exception error)
+                {
+                    response = UiJson.Failure(error);
+                }
+                using (var output = Console.OpenStandardOutput()) Commands.WriteMessage(output, response);
+                return 0;
+            }
             string command = args.Contains("--history")    ? "--history"
                              : args.Contains("--exit")     ? "--exit"
                              : args.Contains("--settings") ? "--settings"

@@ -369,10 +369,11 @@ namespace ViolaSetup
                 if (File.Exists(p))
                     File.Delete(p);
             }
-            bool purge = MessageBox.Show("Also delete pairing configuration, cache, logs and application " +
-                                             "backups?\r\nChoose No to preserve them.",
-                                         "Keep Viola data?", MessageBoxButtons.YesNo,
-                                         MessageBoxIcon.Question) == DialogResult.Yes;
+            bool purge =
+                MessageBox.Show("Also delete saved clipboard history, pairing configuration, received cache, " +
+                                    "logs and backups?\r\nChoose No to preserve all of them.",
+                                "Keep Viola data?", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                                MessageBoxDefaultButton.Button2) == DialogResult.Yes;
             // A copied uninstaller runs outside App, so its installed copy is unlocked.
             string uninstaller = Path.Combine(app, "Uninstall.exe");
             if (File.Exists(uninstaller))

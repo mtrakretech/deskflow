@@ -155,6 +155,56 @@ namespace Viola
         }
         public static void Run(Action<string, Action> test, string root)
         {
+            test("Qt helper exchanges framed JSON over redirected standard streams",
+                 () =>
+                 {
+                     string home = Path.Combine(root, "qt-stdio");
+                     var serverInfo = new System.Diagnostics.ProcessStartInfo(
+                         Application.ExecutablePath, "--ui-fixture \"" + home + "\"") { UseShellExecute = false,
+                                                                                        CreateNoWindow = true };
+                     using (var server = System.Diagnostics.Process.Start(serverInfo))
+                     {
+                         try
+                         {
+                             var info = new System.Diagnostics.ProcessStartInfo(
+                                 Path.Combine(Application.StartupPath, "ViolaFileBridge.exe"),
+                                 "--ui --data-root \"" + home + "\"") { UseShellExecute = false, CreateNoWindow = true,
+                                                                        RedirectStandardInput = true,
+                                                                        RedirectStandardOutput = true,
+                                                                        RedirectStandardError = true };
+                             using (var helper = System.Diagnostics.Process.Start(info))
+                             {
+                                 try
+                                 {
+                                     Commands.WriteMessage(helper.StandardInput.BaseStream,
+                                                           "{\"op\":\"list\",\"search\":\"Welcome\"}");
+                                     helper.StandardInput.Close();
+                                     string response =
+                                         Commands.ReadMessage(helper.StandardOutput.BaseStream, 32 * 1024 * 1024);
+                                     Check(helper.WaitForExit(5000) && helper.ExitCode == 0,
+                                           "Helper did not exit cleanly");
+                                     Check(response.Contains("\"ok\":true") &&
+                                               response.Contains("Welcome to your clipboard"),
+                                           "Invalid helper response: " + response);
+                                 }
+                                 finally
+                                 {
+                                     if (!helper.HasExited)
+                                         helper.Kill();
+                                 }
+                             }
+                         }
+                         finally
+                         {
+                             Commands.Send(home, "--exit");
+                             if (!server.WaitForExit(5000))
+                             {
+                                 server.Kill();
+                                 server.WaitForExit(5000);
+                             }
+                         }
+                     }
+                 });
             test("Qt UI channel frames Unicode responses and rejects invalid lengths",
                  () =>
                  {

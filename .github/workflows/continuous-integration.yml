@@ -238,6 +238,8 @@ jobs:
           elif [ "${{matrix.target.like}}" == "fedora" ]; then
             dnf install -y git
           elif [ "${{matrix.target.like}}" == "suse" ]; then
+            # The container's HTTP mirror redirects can be rejected by the CDN.
+            sed -i 's|http://download.opensuse.org/|https://download.opensuse.org/|g' /etc/zypp/repos.d/*.repo
             zypper refresh
             zypper install -y --force-resolution git
           elif [ "${{matrix.target.like}}" == "arch" ]; then

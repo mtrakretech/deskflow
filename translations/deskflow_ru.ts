@@ -743,6 +743,30 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>&lt;p&gt;Keyboard layout support requires matching layouts on all computers. The following layouts from the other computer are not installed on this computer:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Please install them to enable support for these layouts.&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>&amp;Clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard history…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File sharing and pairing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard tools</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This build does not include Viola clipboard tools. Install the Windows package with clipboard support.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not start clipboard tools. Open the Viola logs for details.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>

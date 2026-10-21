@@ -1,0 +1,86 @@
+# SPDX-FileCopyrightText: (C) 2026 Viola File Bridge contributors
+# SPDX-License-Identifier: MIT
+name: Deskflow + Viola Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ["viola/**"]
+    paths:
+      - "src/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - ".github/workflows/viola-windows.yml"
+  pull_request:
+    paths:
+      - "src/apps/viola-bridge/**"
+      - "src/lib/gui/MainWindow.*"
+      - ".github/workflows/viola-windows.yml"
+permissions:
+  contents: read
+concurrency:
+  group: viola-windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build and test clipboard companion
+        shell: pwsh
+        run: ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/viola-tested" -Tests -Large -NoClipboard
+      - name: Upload companion and tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: Viola-0.3.0-companion-Windows
+          path: ${{ runner.temp }}/viola-tested/
+      - name: Setup MSVC
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        with:
+          arch: amd64
+          spectre: true
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          cache: true
+      - name: Cache OpenSSL build
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: viola-openssl-${{ runner.os }}-v1
+      - name: Install OpenSSL
+        shell: pwsh
+        run: C:/vcpkg/vcpkg.exe install openssl:x64-windows --classic
+      - name: Configure fork
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows
+          -DSKIP_BUILD_TESTS=ON -DBUILD_INSTALLER=ON -DBUILD_VIOLA_BRIDGE=ON
+          -DPACKAGE_VERSION_LABEL=viola-0.3.0
+      - name: Build complete Windows fork
+        shell: pwsh
+        run: |
+          cmake --build build --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow build failed' }
+          cpack --config build/CPackConfig.cmake -G ZIP -B dist
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow ZIP packaging failed' }
+      - name: Build single setup with forked Deskflow included
+        shell: pwsh
+        run: |
+          $payload = (Get-ChildItem dist -Filter '*.zip' | Select-Object -First 1).FullName
+          if (-not $payload) { throw 'Deskflow ZIP missing' }
+          ./src/apps/viola-bridge/Build.ps1 -OutputDirectory "$env:RUNNER_TEMP/deskflow-viola" -DeskflowPayload $payload
+          Copy-Item "$env:RUNNER_TEMP/deskflow-viola/ViolaFileBridge-Setup.exe" dist/Deskflow-Viola-0.3.0-Setup.exe
+          Get-FileHash dist/*.exe,dist/*.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
+      - name: Upload complete setup and portable fork
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deskflow-Viola-0.3.0-Windows-x64
+          path: dist/
+          if-no-files-found: error

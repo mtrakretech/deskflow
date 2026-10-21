@@ -57,6 +57,13 @@ install(
 )
 
 if(WIN32)
+  if(TARGET viola-bridge)
+    add_dependencies(${target} viola-bridge)
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_BINARY_DIR}/viola" "$<TARGET_FILE_DIR:${target}>"
+      VERBATIM)
+  endif()
   set_target_properties(${target} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:LIBCMT")
 
   install(RUNTIME_DEPENDENCY_SET guiDeps

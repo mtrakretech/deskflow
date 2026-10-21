@@ -47,6 +47,7 @@ if(WIN32)
   endif()
 endif()
 
+add_subdirectory(viola-bridge)
 add_subdirectory(deskflow-core)
 add_subdirectory(deskflow-daemon) #Only used on windows
 add_subdirectory(deskflow-gui)

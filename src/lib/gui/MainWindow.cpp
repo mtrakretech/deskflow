@@ -35,7 +35,9 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDesktopServices>
+#include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
@@ -48,6 +50,7 @@
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QScrollBar>
+#include <QTimer>
 
 #include <memory>
 
@@ -157,6 +160,10 @@ MainWindow::MainWindow()
   applyConfig();
   m_statusBar->setSecurityIcon(TlsUtility::isEnabled());
   restoreWindow();
+
+#ifdef Q_OS_WIN
+  QTimer::singleShot(0, this, [this] { openClipboardTools(QStringLiteral("--background"), false); });
+#endif
 
 #ifdef Q_OS_MACOS
   // Route native quits (Cmd+Q / Apple menu Quit / Dock "Quit") to the usual close-to-tray decision instead.
@@ -676,6 +683,13 @@ void MainWindow::createMenuBar()
   menuBar->addMenu(m_menuFile);
   menuBar->addMenu(m_menuEdit);
   menuBar->addMenu(m_menuView);
+#ifdef Q_OS_WIN
+  auto clipboardMenu = menuBar->addMenu(tr("&Clipboard"));
+  clipboardMenu->addAction(tr("Clipboard history…"), this, [this] { openClipboardTools(QStringLiteral("--history")); });
+  clipboardMenu->addAction(tr("File sharing and pairing…"), this, [this] {
+    openClipboardTools(QStringLiteral("--settings"));
+  });
+#endif
   menuBar->addMenu(m_menuHelp);
 
   setMenuBar(menuBar);
@@ -689,11 +703,40 @@ void MainWindow::setupTrayIcon()
   );
   trayMenu->insertSeparator(m_actionMinimize);
   trayMenu->insertSeparator(m_actionTrayQuit);
+#ifdef Q_OS_WIN
+  auto historyAction = new QAction(tr("Clipboard history…"), trayMenu);
+  connect(historyAction, &QAction::triggered, this, [this] { openClipboardTools(QStringLiteral("--history")); });
+  auto pairingAction = new QAction(tr("File sharing and pairing…"), trayMenu);
+  connect(pairingAction, &QAction::triggered, this, [this] { openClipboardTools(QStringLiteral("--settings")); });
+  trayMenu->insertAction(m_actionTrayQuit, historyAction);
+  trayMenu->insertAction(m_actionTrayQuit, pairingAction);
+#endif
   m_trayIcon->setContextMenu(trayMenu);
 
   setTrayIcon();
   m_trayIcon->show();
 }
+
+#ifdef Q_OS_WIN
+void MainWindow::openClipboardTools(const QString &command, bool reportMissing)
+{
+  const auto executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("ViolaFileBridge.exe"));
+  if (!QFileInfo::exists(executable)) {
+    if (reportMissing) {
+      QMessageBox::information(
+          this, tr("Clipboard tools"),
+          tr("This build does not include Viola clipboard tools. Install the Windows package with clipboard support.")
+      );
+    }
+    return;
+  }
+  if (!QProcess::startDetached(executable, {command}) && reportMissing) {
+    QMessageBox::warning(
+        this, tr("Clipboard tools"), tr("Could not start clipboard tools. Open the Viola logs for details.")
+    );
+  }
+}
+#endif
 
 void MainWindow::applyConfig()
 {

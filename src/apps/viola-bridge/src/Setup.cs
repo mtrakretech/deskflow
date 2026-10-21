@@ -108,8 +108,7 @@ namespace ViolaSetup
                     throw new OperationCanceledException("Pairing cancelled; nothing installed.");
                 invitation = Identity.FromPfx(File.ReadAllBytes(pairing), password);
                 string prompt = "Join the PC that supplied this private setup bundle?\r\nCompare this fingerprint " +
-                                "with that PC:\r\n" +
-                                invitation.Pin;
+                                "with that PC:\r\n" + invitation.Pin;
                 if (File.Exists(Path.Combine(data, "pairing.dpapi")))
                     prompt += "\r\nThis replaces your existing Viola pairing.";
                 if (MessageBox.Show(prompt, "Confirm pairing", MessageBoxButtons.OKCancel) != DialogResult.OK)
@@ -244,6 +243,27 @@ namespace ViolaSetup
         }
         static void EnsureRuntime()
         {
+            // CPack normally includes the compiler's Microsoft runtime DLLs beside
+            // Deskflow. Prefer those to an unnecessary machine-wide installation.
+            using (var payload = Assembly.GetExecutingAssembly().GetManifestResourceStream("DeskflowPayload.zip"))
+            {
+                if (payload != null)
+                    using (var archive = new ZipArchive(payload, ZipArchiveMode.Read))
+                    {
+                        var executable = archive.Entries.FirstOrDefault(
+                            e => e.FullName.Replace('\\', '/').EndsWith("/deskflow.exe",
+                                                                        StringComparison.OrdinalIgnoreCase) ||
+                                 e.FullName.Equals("deskflow.exe", StringComparison.OrdinalIgnoreCase));
+                        if (executable != null)
+                        {
+                            string prefix =
+                                executable.FullName.Substring(0, executable.FullName.Length - "deskflow.exe".Length);
+                            if (archive.GetEntry(prefix + "vcruntime140.dll") != null &&
+                                archive.GetEntry(prefix + "msvcp140.dll") != null)
+                                return;
+                        }
+                    }
+            }
             using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("VCRedist.exe"))
             {
                 if (resource == null)
@@ -269,7 +289,7 @@ namespace ViolaSetup
                     if (installed != null && installed >= bundled)
                         return;
                     if (MessageBox.Show("The Microsoft Visual C++ runtime is needed for the bundled Deskflow. " +
-                                        "Install/update the included Microsoft-signed runtime now?",
+                                            "Install/update the included Microsoft-signed runtime now?",
                                         "Deskflow prerequisite", MessageBoxButtons.OKCancel) != DialogResult.OK)
                         throw new OperationCanceledException("Runtime installation cancelled.");
                     using (var process = Process.Start(new ProcessStartInfo(file, "/install /quiet /norestart") {
@@ -335,7 +355,7 @@ namespace ViolaSetup
             if (!Firewall(true))
             {
                 MessageBox.Show("Uninstall stopped so the firewall rules can be removed first. Retry and approve " +
-                                "Windows' firewall helper.",
+                                    "Windows' firewall helper.",
                                 "Viola uninstall");
                 return;
             }
@@ -350,7 +370,7 @@ namespace ViolaSetup
                     File.Delete(p);
             }
             bool purge = MessageBox.Show("Also delete pairing configuration, cache, logs and application " +
-                                         "backups?\r\nChoose No to preserve them.",
+                                             "backups?\r\nChoose No to preserve them.",
                                          "Keep Viola data?", MessageBoxButtons.YesNo,
                                          MessageBoxIcon.Question) == DialogResult.Yes;
             // A copied uninstaller runs outside App, so its installed copy is unlocked.

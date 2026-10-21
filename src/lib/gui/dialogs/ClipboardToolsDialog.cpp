@@ -59,6 +59,7 @@ ClipboardToolsDialog::ClipboardToolsDialog(
   auto searchRow = new QHBoxLayout;
   auto searchLabel = new QLabel(tr("&Search:"), history);
   m_search = new QLineEdit(history);
+  m_search->setObjectName(QStringLiteral("clipboardSearch"));
   m_search->setClearButtonEnabled(true);
   m_search->setPlaceholderText(tr("Search saved text, images and files"));
   searchLabel->setBuddy(m_search);

@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFontDatabase>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
@@ -20,6 +21,12 @@
 int main(int argc, char **argv)
 {
   QApplication app(argc, argv);
+  // Match the Windows Deskflow entry point. The offscreen plugin needs an
+  // explicit font because it does not load the Windows platform font database.
+  QApplication::setStyle(QStringLiteral("fusion"));
+  if (QFontDatabase::addApplicationFont(QDir(qEnvironmentVariable("WINDIR")).filePath("Fonts/segoeui.ttf")) < 0)
+    return 9;
+  QApplication::setFont(QFont(QStringLiteral("Segoe UI"), 9));
   if (argc != 4)
     return 2;
   QTemporaryDir root;
@@ -33,7 +40,7 @@ int main(int argc, char **argv)
   auto dialog = new deskflow::gui::ClipboardToolsDialog(QString::fromLocal8Bit(argv[2]), true, &parent, root.path());
   dialog->show();
   auto items = dialog->findChild<QTreeWidget *>();
-  auto search = dialog->findChild<QLineEdit *>();
+  auto search = dialog->findChild<QLineEdit *>(QStringLiteral("clipboardSearch"));
   auto text = dialog->findChild<QPlainTextEdit *>();
   auto tabs = dialog->findChild<QTabWidget *>();
   auto pin = dialog->findChild<QLineEdit *>(QStringLiteral("pairFingerprint"));

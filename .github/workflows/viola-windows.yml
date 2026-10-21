@@ -66,13 +66,11 @@ jobs:
           -DSKIP_BUILD_TESTS=ON -DBUILD_INSTALLER=ON -DBUILD_VIOLA_BRIDGE=ON
           -DPACKAGE_VERSION_LABEL=viola-0.3.0
           -DBUILD_VIOLA_UI_SMOKE=ON
-      - name: Build complete Windows fork
+      - name: Build native clipboard UI test
         shell: pwsh
         run: |
-          cmake --build build --parallel 4
-          if ($LASTEXITCODE -ne 0) { throw 'Deskflow build failed' }
-          cpack --config build/CPackConfig.cmake -G ZIP -B dist
-          if ($LASTEXITCODE -ne 0) { throw 'Deskflow ZIP packaging failed' }
+          cmake --build build --target viola-ui-smoke --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Qt clipboard UI test build failed' }
       - name: Verify native clipboard UI with isolated fixture data
         shell: pwsh
         run: |
@@ -89,6 +87,13 @@ jobs:
         with:
           name: Deskflow-Viola-native-UI
           path: ui-screenshots/
+      - name: Build complete Windows fork
+        shell: pwsh
+        run: |
+          cmake --build build --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow build failed' }
+          cpack --config build/CPackConfig.cmake -G ZIP -B dist
+          if ($LASTEXITCODE -ne 0) { throw 'Deskflow ZIP packaging failed' }
       - name: Build single setup with forked Deskflow included
         shell: pwsh
         run: |
